@@ -229,3 +229,25 @@ void *mouseControl(void *threadp){
 
 
 }
+
+void print_scheduler(void)
+{
+   int schedType;
+
+   schedType = sched_getscheduler(getpid());
+
+   switch(schedType)
+   {
+       case SCHED_FIFO:
+           printf("Pthread Policy is SCHED_FIFO\n");
+           break;
+       case SCHED_OTHER:
+           printf("Pthread Policy is SCHED_OTHER\n"); exit(-1);
+         break;
+       case SCHED_RR:
+           printf("Pthread Policy is SCHED_RR\n"); exit(-1);
+           break;
+       default:
+           printf("Pthread Policy is UNKNOWN\n"); exit(-1);
+   }
+}

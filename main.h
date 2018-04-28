@@ -21,5 +21,15 @@
 #include <opencv2/objdetect/objdetect.hpp>
 
 #define NUM_THREADS (4)
+#define NUM_CPU_CORES (1)
+
+
+typedef struct
+{
+    int threadIdx;
+    unsigned long long sequencePeriods;
+} threadParams_t;
+
+void print_scheduler(void);
 
 #endif
