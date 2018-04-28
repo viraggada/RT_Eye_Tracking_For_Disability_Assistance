@@ -58,6 +58,7 @@ Function to detect and draw any faces that is present in an image
 bool detect_and_draw( IplImage* img,CvHaarClassifierCascade* cascade )
 {
     int scale = 1;
+    Mat image;
 
     // Create a new image based on the input image
     IplImage* temp = cvCreateImage( cvSize(img->width/scale,img->height/scale), 8, 3 );
@@ -94,7 +95,7 @@ bool detect_and_draw( IplImage* img,CvHaarClassifierCascade* cascade )
             // Draw the rectangle in the input image
             cvRectangle( img, pt1, pt2, CV_RGB(255,0,0), 3, 8, 0 );
 
-	  cv::Mat image(img);
+	  cv::Mat image = cv::cvarrToMat(img);
 	  cv::Rect rect;
 
 	  rect = cv::Rect(pt1.x,pt1.y,(pt2.x-pt1.x),(pt2.y-pt1.y));
