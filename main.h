@@ -18,6 +18,6 @@
 #include <opencv2/contrib/contrib.hpp>
 #include <opencv2/objdetect/objdetect.hpp>
 
-#define NUM_THREADS ()
+#define NUM_THREADS 5
 
 #endif
