@@ -18,26 +18,6 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 
-// Create memory for calculations
-static CvMemStorage* storage = 0;
-// Create a new Haar classifier
-static CvHaarClassifierCascade* cascade = 0;
-Mat img1; Mat img2; Mat templ; Mat result;
-
-int threshold_value = 200;
-int threshold_type = 3;;
-int const max_value = 255;
-int const max_type = 4;
-int const max_BINARY_value = 255;
-
-const char* image_window = "Source Image";
-const char* result_window = "Result window";
-
-int match_method=0;
-int max_Trackbar = 5;
-int eye_open=0;
-int eye_close=0;
-
 /*******************************************************************
 Function to detect and draw any faces that is present in an image
 ********************************************************************/
