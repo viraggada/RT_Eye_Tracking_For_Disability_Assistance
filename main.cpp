@@ -9,6 +9,7 @@
 #include <sched.h>
 #include <semaphore.h>
 #include "main.h"
+#include "blink_detection.h"
 
 int main(int argc, const char** argv)
 {
@@ -80,6 +81,39 @@ int main(int argc, const char** argv)
 
     rt_param[i].sched_priority=rt_max_prio-i;
     pthread_attr_setschedparam(&rt_sched_attr[i], &rt_param[i]);
+
+    printf("threads spawning\r\n");
+
+    pthread_create(&threads[0],                   // pointer to thread descriptor
+                    &rt_sched_attr[0],      // use set attributes
+                    Capture_Image,     // thread function entry point
+                    (void *)(NULL)         // parameters to pass in
+                    );
+
+    pthread_create(&threads[1],
+                     &rt_sched_attr[1],
+                     Extract_Face,
+                     (void *)(NULL)
+                    );
+    pthread_create(&threads[2],
+                     &rt_sched_attr[2],
+                     Eye_Track,
+                     (void *)(NULL)
+                    );
+    pthread_create(&threads[3],
+                     &rt_sched_attr[3],
+                     Eye_Blink,
+                     (void *)(NULL)
+                    );
+    pthread_create(&threads[4],
+                     &rt_sched_attr[4],
+                     Mouse_Tool,
+                     (void *)(NULL)
+                    );
+
+
+    for(i=0; i < NUM_THREADS; i++)
+    pthread_join(threads[i], NULL);
 
     threadParams[i].threadIdx=i;
   }
