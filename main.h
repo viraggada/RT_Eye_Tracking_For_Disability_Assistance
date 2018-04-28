@@ -9,6 +9,8 @@
 
 #include <unistd.h>
 #include <stdio.h>
+#include <math.h>
+#include <queue>
 #include <iostream>
 
 #include <opencv2/core/core.hpp>
@@ -18,6 +20,6 @@
 #include <opencv2/contrib/contrib.hpp>
 #include <opencv2/objdetect/objdetect.hpp>
 
-#define NUM_THREADS 5
+#define NUM_THREADS (4)
 
 #endif
