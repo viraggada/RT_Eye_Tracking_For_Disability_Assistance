@@ -5,6 +5,14 @@
 * Reference: Codes for this file taking from https://github.com/trishume/eyeLike
 ********************************************************************************/
 
+#include "eyeTracking.h"
+
+cv::String face_cascade_name = "haarcascade_frontalface_alt.xml";
+cv::Mat debugImage;
+cv::CascadeClassifier face_cascade;
+std::string main_window_name = "Capture - Face detection";
+std::string face_window_name = "Capture - Face";
+cv::RNG rng(12345);
 cv::Mat skinCrCbHist = cv::Mat::zeros(cv::Size(256, 256), CV_8UC1);
 
 void findEyes(cv::Mat frame_gray, cv::Rect face) {
@@ -85,7 +93,7 @@ void findEyes(cv::Mat frame_gray, cv::Rect face) {
 //  faceROI.copyTo( destinationROI );
 }
 
-
+/*
 cv::Mat findSkin (cv::Mat &frame) {
   cv::Mat input;
   cv::Mat output = cv::Mat(frame.rows,frame.cols, CV_8U);
@@ -105,7 +113,7 @@ cv::Mat findSkin (cv::Mat &frame) {
     }
   }
   return output;
-}
+}*/
 
 /**
  * @function detectAndDisplay

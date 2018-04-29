@@ -7,11 +7,13 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <sched.h>
+#include <vector>
 #include <syslog.h>
 #include <sys/time.h>
 #include <semaphore.h>
 #include "main.h"
 #include "eyeTracking.h"
+#include "findEyeCorner.h"
 
 int abortTest=FALSE;
 int abortS1=FALSE, abortS2=FALSE, abortS3=FALSE, abortS4=FALSE, abortS5=FALSE;
@@ -25,6 +27,13 @@ void *mouseControl(void *threadp);
 cv::Mat frame; //frame for captured image
 std::vector<cv::Rect> faces; // vector to hold face
 cv::Mat frame_gray; // store red channel
+
+extern cv::String face_cascade_name;
+extern cv::Mat skinCrCbHist;
+extern cv::Mat debugImage;
+extern cv::CascadeClassifier face_cascade;
+extern std::string main_window_name;
+extern std::string face_window_name;
 
 int main(int argc, const char** argv)
 {
@@ -41,7 +50,7 @@ int main(int argc, const char** argv)
   pid_t mainpid;
   cpu_set_t allcpuset;
 
-  printf("System has %d processors configured and %d available.\n", get_nprocs_conf(), get_nprocs());
+  //printf("System has %d processors configured and %d available.\n", get_nprocs_conf(), get_nprocs());
 
   CPU_ZERO(&allcpuset);
 
@@ -155,7 +164,10 @@ void *captureImage(void *threadp){
   //cv::Mat frame;
 
   // Load the cascades
-  if( !face_cascade.load( face_cascade_name ) ){ printf("--(!)Error loading face cascade, please change face_cascade_name in source code.\n"); return -1; };
+  if( !face_cascade.load( face_cascade_name ) ){ printf("--(!)Error loading face cascade, please change face_cascade_name in source code.\n");
+ 
+   }
+  else{
 
   cv::namedWindow(main_window_name,CV_WINDOW_NORMAL);
   cv::moveWindow(main_window_name, 400, 100);
@@ -188,7 +200,7 @@ void *captureImage(void *threadp){
       // Apply the classifier to the frame
       if( !frame.empty() ) {
         //detectAndDisplay( frame );
-        sem_post(&sem_detectFace)
+        sem_post(&sem_detectFace);
       }
       else {
         printf(" --(!) No captured frame -- Break!");
@@ -204,12 +216,13 @@ void *captureImage(void *threadp){
   }
 
   releaseCornerKernels();
+  }
 }
 
 void *extractFace(void *threadp){
 
   while(true){
-    sem_wait(sem_detectFace);
+    sem_wait(&sem_detectFace);
     if(detectAndDisplay(frame,faces,frame_gray)==0)
       sem_post(&sem_detectEye);
   }
