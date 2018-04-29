@@ -24,6 +24,7 @@ void *extractFace(void *threadp);
 void *eyeTracking(void *threadp);
 void *mouseControl(void *threadp);
 
+
 cv::Mat frame; //frame for captured image
 extern std::vector<cv::Rect> faces; // vector to hold face
 extern cv::Mat frame_gray; // store red channel
@@ -226,7 +227,7 @@ void *captureImage(void *threadp){
           clock_gettime(CLOCK_REALTIME, &stopTime);
           sem_post(&sem_detectFace);
           delta_t(&stopTime,&startTime,&timeDifference);
-          syslog(LOG_INFO,"Image capture execution time - %ld sec, %ld nsec\n",timeDifference->tv_sec,timeDifference->tv_nsec);
+          syslog(LOG_INFO,"Image capture execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
         }
         else {
           printf(" --(!) No captured frame -- Break!");
@@ -262,7 +263,7 @@ void *extractFace(void *threadp){
       sem_post(&sem_takeImage); // if face not found get new frame
     }
     delta_t(&stopTime,&startTime,&timeDifference);
-    syslog(LOG_INFO,"Face extraction execution time - %ld sec, %ld nsec\n",timeDifference->tv_sec,timeDifference->tv_nsec);
+    syslog(LOG_INFO,"Face extraction execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
     //std::cout << " face extracted " << std::endl;
   }
 }
@@ -280,7 +281,7 @@ void *eyeTracking(void *threadp){
    clock_gettime(CLOCK_REALTIME, &stopTime);
    sem_post(&sem_takeImage);
    delta_t(&stopTime,&startTime,&timeDifference);
-   syslog(LOG_INFO,"Eye detection execution time - %ld sec, %ld nsec\n",timeDifference->tv_sec,timeDifference->tv_nsec);
+   syslog(LOG_INFO,"Eye detection execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
   }
 }
 
@@ -294,7 +295,7 @@ void *mouseControl(void *threadp){
     clock_gettime(CLOCK_REALTIME, &stopTime);
     sem_post(&sem_detectFace);
     delta_t(&stopTime,&startTime,&timeDifference);;
-    syslog(LOG_INFO,"Mouse control execution time - %ld sec, %ld nsec\n",timeDifference->tv_sec,timeDifference->tv_nsec);
+    syslog(LOG_INFO,"Mouse control execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
   }
 }
 

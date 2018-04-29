@@ -21,10 +21,11 @@
 //#include <opencv2/contrib/contrib.hpp>
 #include <opencv2/objdetect/objdetect.hpp>
 
-#define NUM_THREADS (3)
+#define NUM_THREADS   (3)
 #define NUM_CPU_CORES (1)
-#define FALSE (0)
-#define TRUE (1)
+#define FALSE         (0)
+#define TRUE          (1)
+#define NSEC          (1000000000)
 
 typedef struct
 {
@@ -33,6 +34,6 @@ typedef struct
 } threadParams_t;
 
 void print_scheduler(void);
-int delta_t(struct timespec *stop, struct timespec *start, struct timespec *delta_t)
+int delta_t(struct timespec *stop, struct timespec *start, struct timespec *delta_t);
 
 #endif
