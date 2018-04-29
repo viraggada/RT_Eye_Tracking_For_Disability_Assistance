@@ -14,7 +14,7 @@
 #include "findEyeCorner.h"
 
 /** Function Headers */
-int detectAndDisplay( cv::Mat frame, std::vector<cv::Rect> &faces,cv::Mat &frame_gray);
+int detectAndDisplay( cv::Mat frame);
 void findEyes(cv::Mat frame_gray, cv::Rect face);
 
 /* Global Variable */

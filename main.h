@@ -21,7 +21,7 @@
 //#include <opencv2/contrib/contrib.hpp>
 #include <opencv2/objdetect/objdetect.hpp>
 
-#define NUM_THREADS (4)
+#define NUM_THREADS (3)
 #define NUM_CPU_CORES (1)
 #define FALSE (0)
 #define TRUE (1)

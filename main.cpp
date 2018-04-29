@@ -25,8 +25,8 @@ void *eyeTracking(void *threadp);
 void *mouseControl(void *threadp);
 
 cv::Mat frame; //frame for captured image
-std::vector<cv::Rect> faces; // vector to hold face
-cv::Mat frame_gray; // store red channel
+extern std::vector<cv::Rect> faces; // vector to hold face
+extern cv::Mat frame_gray; // store red channel
 
 extern cv::String face_cascade_name;
 extern cv::Mat skinCrCbHist;
@@ -50,7 +50,7 @@ int main(int argc, const char** argv)
   pid_t mainpid;
   cpu_set_t allcpuset;
 
-  //printf("System has %d processors configured and %d available.\n", get_nprocs_conf(), get_nprocs());
+ // printf("System has %d processors configured and %d available.\n", get_nprocs_conf(), get_nprocs());
 
   CPU_ZERO(&allcpuset);
 
@@ -113,48 +113,62 @@ int main(int argc, const char** argv)
   //
 
   // Image capture thread
-  rt_param[1].sched_priority=rt_max_prio-1;
-  pthread_attr_setschedparam(&rt_sched_attr[1], &rt_param[1]);
-  rc=pthread_create(&threads[1],               // pointer to thread descriptor
-                    &rt_sched_attr[1],         // use specific attributes
+  rt_param[0].sched_priority=rt_max_prio-1;
+  pthread_attr_setschedparam(&rt_sched_attr[0], &rt_param[0]);
+  rc=pthread_create(&threads[0],               // pointer to thread descriptor
+                    &rt_sched_attr[0],         // use specific attributes
                     //(void *)0,               // default attributes
                     captureImage,                 // thread function entry point
-                    (void *)&(threadParams[1]) // parameters to pass in
+                    (void *)&(threadParams[0]) // parameters to pass in
                    );
   if(rc < 0)
     perror("pthread_create for capture image");
   else
+   {
     printf("pthread_create successful for capture image\n");
+    perror("capture imag");
+   }
 
   // Face detection thread
-  rt_param[2].sched_priority=rt_max_prio-2;
-  pthread_attr_setschedparam(&rt_sched_attr[2], &rt_param[2]);
-  rc=pthread_create(&threads[2], &rt_sched_attr[2], extractFace, (void *)&(threadParams[2]));
+  rt_param[1].sched_priority=rt_max_prio-2;
+  pthread_attr_setschedparam(&rt_sched_attr[1], &rt_param[1]);
+  rc=pthread_create(&threads[1], &rt_sched_attr[1], extractFace, (void *)&(threadParams[1]));
   if(rc < 0)
     perror("pthread_create for face detection");
   else
-    printf("pthread_create successful for face detection\n");
-
+   {
+     printf("pthread_create successful for face detection\n");
+     perror("Face detec");
+   }
   // Eye tracking thread
-  rt_param[3].sched_priority=rt_max_prio-3;
-  pthread_attr_setschedparam(&rt_sched_attr[3], &rt_param[3]);
-  rc=pthread_create(&threads[3], &rt_sched_attr[3], eyeTracking, (void *)&(threadParams[3]));
+  rt_param[2].sched_priority=rt_max_prio-3;
+  pthread_attr_setschedparam(&rt_sched_attr[2], &rt_param[2]);
+  rc=pthread_create(&threads[2], &rt_sched_attr[2], eyeTracking, (void *)&(threadParams[2]));
   if(rc < 0)
   perror("pthread_create for eye tracking");
   else
-    printf("pthread_create successful for eye tracking\n");
-
+   {
+     printf("pthread_create successful for eye tracking\n");
+     perror("Eye tracking");
+    }
   //Mouse control thread
-  /*rt_param[4].sched_priority=rt_max_prio-2;
-  pthread_attr_setschedparam(&rt_sched_attr[4], &rt_param[4]);
-  rc=pthread_create(&threads[4], &rt_sched_attr[4], mouseControl, (void *)&(threadParams[4]));
+  /*rt_param[3].sched_priority=rt_max_prio-2;
+  pthread_attr_setschedparam(&rt_sched_attr[3], &rt_param[3]);
+  rc=pthread_create(&threads[4], &rt_sched_attr[3], mouseControl, (void *)&(threadParams[3]));
   if(rc < 0)
     perror("pthread_create for service 4");
   else
     printf("pthread_create successful for mouse control\n");*/
+  
+ // while(1);
 
   for(i=0;i<NUM_THREADS;i++)
-    pthread_join(threads[i], NULL);
+  {
+   if( pthread_join(threads[i], NULL) !=0)
+    {
+      perror("pthread_join() error");
+    }
+  }
 
   return 0;
 }
@@ -162,7 +176,7 @@ int main(int argc, const char** argv)
 
 void *captureImage(void *threadp){
   //cv::Mat frame;
-
+  std::cout << "capture image thread created" << std::endl;
   // Load the cascades
   if( !face_cascade.load( face_cascade_name ) ){ printf("--(!)Error loading face cascade, please change face_cascade_name in source code.\n");
  
@@ -186,12 +200,17 @@ void *captureImage(void *threadp){
   ellipse(skinCrCbHist, cv::Point(113, 155.6), cv::Size(23.4, 15.2),
         43.0, 0.0, 360.0, cv::Scalar(255, 255, 255), -1);
 
+  std::cout << "Accessing Camera..." << std::endl;
+
   // I make an attempt at supporting both 2.x and 3.x OpenCV
   cv::VideoCapture capture(0);
+  
   if( capture.isOpened() ) {
+    std::cout << "Camera is opened" << std::endl;
     while( true ) {
 
       sem_wait(&sem_takeImage);
+      //std::cout << "Image capture semaphore taken " << std::endl;
       capture.read(frame);
       // mirror it
       cv::flip(frame, frame, 1);
@@ -201,37 +220,43 @@ void *captureImage(void *threadp){
       if( !frame.empty() ) {
         //detectAndDisplay( frame );
         sem_post(&sem_detectFace);
+        //imwrite("frame.png",frame);
       }
       else {
         printf(" --(!) No captured frame -- Break!");
         break;
       }
-      //imshow(main_window_name,debugImage);
+      imshow(main_window_name,frame);
       int c = cv::waitKey(10);
       if( (char)c == 'c' ) { break; }
       if( (char)c == 'f' ) {
         imwrite("frame.png",frame);
       }
     }
-  }
-
+  }  
+  
   releaseCornerKernels();
   }
 }
 
 void *extractFace(void *threadp){
-
+  std::cout << "extract face thread created" <<  std::endl;
   while(true){
     sem_wait(&sem_detectFace);
-    if(detectAndDisplay(frame,faces,frame_gray)==0)
+    //std::cout << "face extraction sem " << std::endl;
+    if(detectAndDisplay(frame)==0)
       sem_post(&sem_detectEye);
+    else
+      sem_post(&sem_takeImage);
+    //std::cout << " face extracted " << std::endl;
   }
 }
 
 void *eyeTracking(void *threadp){
-
+  std::cout << "eye tracking thread created" << std::endl;
   while(true){
    sem_wait(&sem_detectEye);
+   //std::cout << "eye tracking sem" << std::endl;
    findEyes(frame_gray, faces[0]);
    imshow(main_window_name,debugImage);
    sem_post(&sem_takeImage);

@@ -15,6 +15,11 @@ std::string face_window_name = "Capture - Face";
 cv::RNG rng(12345);
 cv::Mat skinCrCbHist = cv::Mat::zeros(cv::Size(256, 256), CV_8UC1);
 
+std::vector<cv::Rect> faces; // vector to hold face
+cv::Mat frame_gray; // store red channel
+
+
+
 void findEyes(cv::Mat frame_gray, cv::Rect face) {
   cv::Mat faceROI = frame_gray(face);
   cv::Mat debugFace = faceROI;
@@ -118,7 +123,7 @@ cv::Mat findSkin (cv::Mat &frame) {
 /**
  * @function detectAndDisplay
  */
-int detectAndDisplay( cv::Mat frame, std::vector<cv::Rect> &faces,cv::Mat &frame_gray) {
+int detectAndDisplay( cv::Mat frame) {
   //std::vector<cv::Rect> faces;
   //cv::Mat frame_gray;
 
@@ -139,9 +144,10 @@ int detectAndDisplay( cv::Mat frame, std::vector<cv::Rect> &faces,cv::Mat &frame
   }
   //-- Show what you got
   if (faces.size() > 0) {
+     //std::cout << "Face seperated" << std::endl;
      return 0;
     //findEyes(frame_gray, faces[0]);
   }
-
+  std::cout << "Face not found " << std::endl;
   return -1;
 }
