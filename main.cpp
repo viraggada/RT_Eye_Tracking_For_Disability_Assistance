@@ -159,7 +159,7 @@ int main(int argc, const char** argv)
     perror("pthread_create for service 4");
   else
     printf("pthread_create successful for mouse control\n");*/
-  
+
  // while(1);
 
   for(i=0;i<NUM_THREADS;i++)
@@ -176,98 +176,129 @@ int main(int argc, const char** argv)
 
 void *captureImage(void *threadp){
   //cv::Mat frame;
+
+  struct timespec startTime = {0, 0}, stopTime = {0, 0}, timeDifference = {0, 0};
+
   std::cout << "capture image thread created" << std::endl;
   // Load the cascades
-  if( !face_cascade.load( face_cascade_name ) ){ printf("--(!)Error loading face cascade, please change face_cascade_name in source code.\n");
- 
-   }
+  if( !face_cascade.load( face_cascade_name ) ){
+     printf("--(!)Error loading face cascade, please change face_cascade_name in source code.\n");
+  }
   else{
 
-  cv::namedWindow(main_window_name,CV_WINDOW_NORMAL);
-  cv::moveWindow(main_window_name, 400, 100);
-  cv::namedWindow(face_window_name,CV_WINDOW_NORMAL);
-  cv::moveWindow(face_window_name, 10, 100);
-  cv::namedWindow("Right Eye",CV_WINDOW_NORMAL);
-  cv::moveWindow("Right Eye", 10, 600);
-  cv::namedWindow("Left Eye",CV_WINDOW_NORMAL);
-  cv::moveWindow("Left Eye", 10, 800);
-  cv::namedWindow("aa",CV_WINDOW_NORMAL);
-  cv::moveWindow("aa", 10, 800);
-  cv::namedWindow("aaa",CV_WINDOW_NORMAL);
-  cv::moveWindow("aaa", 10, 800);
+    cv::namedWindow(main_window_name,CV_WINDOW_NORMAL);
+    cv::moveWindow(main_window_name, 400, 100);
+    cv::namedWindow(face_window_name,CV_WINDOW_NORMAL);
+    cv::moveWindow(face_window_name, 10, 100);
+    cv::namedWindow("Right Eye",CV_WINDOW_NORMAL);
+    cv::moveWindow("Right Eye", 10, 600);
+    cv::namedWindow("Left Eye",CV_WINDOW_NORMAL);
+    cv::moveWindow("Left Eye", 10, 800);
+    cv::namedWindow("aa",CV_WINDOW_NORMAL);
+    cv::moveWindow("aa", 10, 800);
+    cv::namedWindow("aaa",CV_WINDOW_NORMAL);
+    cv::moveWindow("aaa", 10, 800);
 
-  createCornerKernels();
-  ellipse(skinCrCbHist, cv::Point(113, 155.6), cv::Size(23.4, 15.2),
-        43.0, 0.0, 360.0, cv::Scalar(255, 255, 255), -1);
+    createCornerKernels();
+    ellipse(skinCrCbHist, cv::Point(113, 155.6), cv::Size(23.4, 15.2),
+          43.0, 0.0, 360.0, cv::Scalar(255, 255, 255), -1);
 
-  std::cout << "Accessing Camera..." << std::endl;
+    std::cout << "Accessing Camera..." << std::endl;
 
-  // I make an attempt at supporting both 2.x and 3.x OpenCV
-  cv::VideoCapture capture(0);
-  
-  if( capture.isOpened() ) {
-    std::cout << "Camera is opened" << std::endl;
-    while( true ) {
+    // I make an attempt at supporting both 2.x and 3.x OpenCV
+    cv::VideoCapture capture(0);
 
-      sem_wait(&sem_takeImage);
-      //std::cout << "Image capture semaphore taken " << std::endl;
-      capture.read(frame);
-      // mirror it
-      cv::flip(frame, frame, 1);
-      frame.copyTo(debugImage);
+    if( capture.isOpened() ) {
+      std::cout << "Camera is opened" << std::endl;
+      while( true ) {
 
-      // Apply the classifier to the frame
-      if( !frame.empty() ) {
-        //detectAndDisplay( frame );
-        sem_post(&sem_detectFace);
-        //imwrite("frame.png",frame);
-      }
-      else {
-        printf(" --(!) No captured frame -- Break!");
-        break;
-      }
-      imshow(main_window_name,frame);
-      int c = cv::waitKey(10);
-      if( (char)c == 'c' ) { break; }
-      if( (char)c == 'f' ) {
-        imwrite("frame.png",frame);
+        sem_wait(&sem_takeImage);
+        clock_gettime(CLOCK_REALTIME, &startTime);
+        //std::cout << "Image capture semaphore taken " << std::endl;
+        capture.read(frame);
+        // mirror it
+        cv::flip(frame, frame, 1);
+        frame.copyTo(debugImage);
+
+        // Apply the classifier to the frame
+        if( !frame.empty() ) {
+          //detectAndDisplay( frame );
+          clock_gettime(CLOCK_REALTIME, &stopTime);
+          sem_post(&sem_detectFace);
+          delta_t(&stopTime,&startTime,&timeDifference);
+          syslog(LOG_INFO,"Image capture execution time - %ld sec, %ld nsec\n",timeDifference->tv_sec,timeDifference->tv_nsec);
+        }
+        else {
+          printf(" --(!) No captured frame -- Break!");
+          break;
+        }
+        imshow(main_window_name,frame);
+        int c = cv::waitKey(10);
+        if( (char)c == 'c' ) { break; }
+        if( (char)c == 'f' ) {
+          imwrite("frame.png",frame);
+        }
       }
     }
-  }  
-  
-  releaseCornerKernels();
+
+    releaseCornerKernels();
   }
 }
 
 void *extractFace(void *threadp){
+
+  struct timespec startTime = {0, 0}, stopTime = {0, 0}, timeDifference = {0, 0};
   std::cout << "extract face thread created" <<  std::endl;
   while(true){
     sem_wait(&sem_detectFace);
+    clock_gettime(CLOCK_REALTIME, &startTime);
     //std::cout << "face extraction sem " << std::endl;
-    if(detectAndDisplay(frame)==0)
+    if(detectAndDisplay(frame)==0){
+      clock_gettime(CLOCK_REALTIME, &stopTime);
       sem_post(&sem_detectEye);
-    else
-      sem_post(&sem_takeImage);
+    }
+    else{
+      clock_gettime(CLOCK_REALTIME, &stopTime);
+      sem_post(&sem_takeImage); // if face not found get new frame
+    }
+    delta_t(&stopTime,&startTime,&timeDifference);
+    syslog(LOG_INFO,"Face extraction execution time - %ld sec, %ld nsec\n",timeDifference->tv_sec,timeDifference->tv_nsec);
     //std::cout << " face extracted " << std::endl;
   }
 }
 
 void *eyeTracking(void *threadp){
+
+  struct timespec startTime = {0, 0}, stopTime = {0, 0}, timeDifference = {0, 0};
   std::cout << "eye tracking thread created" << std::endl;
   while(true){
    sem_wait(&sem_detectEye);
+   clock_gettime(CLOCK_REALTIME, &startTime);
    //std::cout << "eye tracking sem" << std::endl;
    findEyes(frame_gray, faces[0]);
    imshow(main_window_name,debugImage);
+   clock_gettime(CLOCK_REALTIME, &stopTime);
    sem_post(&sem_takeImage);
+   delta_t(&stopTime,&startTime,&timeDifference);
+   syslog(LOG_INFO,"Eye detection execution time - %ld sec, %ld nsec\n",timeDifference->tv_sec,timeDifference->tv_nsec);
   }
 }
 
 void *mouseControl(void *threadp){
+  struct timespec startTime = {0, 0}, stopTime = {0, 0}, timeDifference = {0, 0};
 
+  while(true){
+    sem_wait(&sem_controlMouse);
+    clock_gettime(CLOCK_REALTIME, &startTime);
 
+    clock_gettime(CLOCK_REALTIME, &stopTime);
+    sem_post(&sem_detectFace);
+    delta_t(&stopTime,&startTime,&timeDifference);;
+    syslog(LOG_INFO,"Mouse control execution time - %ld sec, %ld nsec\n",timeDifference->tv_sec,timeDifference->tv_nsec);
+  }
 }
 
+// Function to print the current scheduling policy
 void print_scheduler(void)
 {
    int schedType;
@@ -288,4 +319,40 @@ void print_scheduler(void)
        default:
            printf("Pthread Policy is UNKNOWN\n"); exit(-1);
    }
+}
+
+// Function to calculate difference in time
+int delta_t(struct timespec *stop, struct timespec *start, struct timespec *delta_t)
+{
+  int dt_sec=stop->tv_sec - start->tv_sec;
+  int dt_nsec=stop->tv_nsec - start->tv_nsec;
+
+  if(dt_sec >= 0)
+  {
+    if(dt_nsec >= 0)
+    {
+      delta_t->tv_sec=dt_sec;
+      delta_t->tv_nsec=dt_nsec;
+    }
+    else
+    {
+      delta_t->tv_sec=dt_sec-1;
+      delta_t->tv_nsec=NSEC+dt_nsec;
+    }
+  }
+  else
+  {
+    if(dt_nsec >= 0)
+    {
+      delta_t->tv_sec=dt_sec;
+      delta_t->tv_nsec=dt_nsec;
+    }
+    else
+    {
+      delta_t->tv_sec=dt_sec-1;
+      delta_t->tv_nsec=NSEC+dt_nsec;
+    }
+  }
+
+  return(1);
 }

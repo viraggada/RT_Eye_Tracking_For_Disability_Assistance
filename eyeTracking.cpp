@@ -102,9 +102,7 @@ void findEyes(cv::Mat frame_gray, cv::Rect face) {
 cv::Mat findSkin (cv::Mat &frame) {
   cv::Mat input;
   cv::Mat output = cv::Mat(frame.rows,frame.cols, CV_8U);
-
   cvtColor(frame, input, CV_BGR2YCrCb);
-
   for (int y = 0; y < input.rows; ++y) {
     const cv::Vec3b *Mr = input.ptr<cv::Vec3b>(y);
 //    uchar *Or = output.ptr<uchar>(y);

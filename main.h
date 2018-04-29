@@ -33,5 +33,6 @@ typedef struct
 } threadParams_t;
 
 void print_scheduler(void);
+int delta_t(struct timespec *stop, struct timespec *start, struct timespec *delta_t)
 
 #endif
