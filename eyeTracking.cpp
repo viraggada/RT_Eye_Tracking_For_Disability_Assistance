@@ -146,6 +146,6 @@ int detectAndDisplay( cv::Mat frame) {
      return 0;
     //findEyes(frame_gray, faces[0]);
   }
-  std::cout << "Face not found " << std::endl;
+  //std::cout << "Face not found " << std::endl;
   return -1;
 }

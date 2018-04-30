@@ -18,9 +18,47 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 
+
+int threshold_value = 200;
+int threshold_type = 3;;
+int const max_value = 255;
+int const max_type = 4;
+int const max_BINARY_value = 255;
+
+const char* image_window = "Source Image";
+const char* result_window = "Result window";
+
+int match_method=0;
+int max_Trackbar = 5;
+int eye_open=0;
+int eye_close=0;
+
+cv::Mat roiImg;
+
+CvMemStorage* storage = 0;
+
+// Create a new Haar classifier
+CvHaarClassifierCascade* cascade = 0;
+
+
 /*******************************************************************
 Function to detect and draw any faces that is present in an image
 ********************************************************************/
+using namespace cv;
+
+extern Mat img1;
+extern Mat img2; 
+Mat templ; Mat result;
+
+// Structure for getting video from camera or avi
+     CvCapture* capture = 0;
+
+       // Used for calculations
+    int optlen = strlen("--cascade=");
+
+    // Input file name for avi or image file.
+    const char* input_name;
+
 
 bool detect_and_draw( IplImage* img,CvHaarClassifierCascade* cascade )
 {
@@ -69,12 +107,12 @@ bool detect_and_draw( IplImage* img,CvHaarClassifierCascade* cascade )
 
 	  roiImg = image(rect);
     	  cv::imshow("roi",roiImg);
-///Send to arduino
-
+	///Send to arduino
+	 detect_blink(roiImg);
         }
     }
     // Show the image in the window named "result"
-    cvShowImage( "original_frame", img );
+    //scvShowImage( "original_frame", img );
 
    if(i  > 0)
 		return 1;
@@ -132,7 +170,7 @@ void MatchingMethod(cv::Mat templ,int id )
   if(id == 0 && (minVal < 0))
 	{
 	eye_open=eye_open+1;
-	if(eye_open == 10)
+	if(eye_open == 5)
 		{
 		std::cout<<"Eye Open"<<std::endl;
 		eye_open=0;
@@ -141,13 +179,14 @@ void MatchingMethod(cv::Mat templ,int id )
 	}
    else if(id == 1 && (minVal < 0))
 	eye_close=eye_close+1;
-	if(eye_close == 10)
+	if(eye_close == 5)
 		{
-		std::cout<<"Eye Closed"<<std::endl;
+		std::cout<<"\t\t\t\t\tEye Closed"<<std::endl;
 		eye_close=0;
-		system("python send_arduino.py");
+		eye_open=0;
+		//system("python send_arduino.py");
 		}
-
+	std:: cout<<"Open Val:"<<eye_open<<"  Close Val:"<<eye_close<<std::endl;
 
 
   /// For SQDIFF and SQDIFF_NORMED, the best matches are lower values. For all the other methods, the higher the better
@@ -160,8 +199,8 @@ void MatchingMethod(cv::Mat templ,int id )
   cv::rectangle( img_display, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
   cv::rectangle( result, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
 
-  cv::imshow( image_window, img_display );
-  cv::imshow( result_window, result );
+ // cv::imshow( image_window, img_display );
+  //cv::imshow( result_window, result );
 
   return;
 }
