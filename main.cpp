@@ -1,5 +1,3 @@
-
-
 /**********************************************************
 * Authors: Virag Gada and Shreyas Vasanhkumar
 * Title: Real-time eye tracking for disability assisatance
@@ -225,9 +223,9 @@ int main(int argc, const char** argv)
 }
 
 void *captureImage(void *threadp){
-
-  std::cout << "capture image thread created" << std::endl;
   
+  std::cout << "capture image thread created" << std::endl;
+  struct timespec startTime = {0, 0}, stopTime = {0, 0}, timeDifference = {0, 0};
   // Load the cascades
   if( !face_cascade.load( face_cascade_name ) ){ printf("--(!)Error loading face cascade, please change face_cascade_name in source code.\n");
 
@@ -256,22 +254,15 @@ void *captureImage(void *threadp){
 
   std::cout << "Accessing Camera..." << std::endl;
 
-  // I make an attempt at supporting both 2.x and 3.x OpenCV
-  /*#if CV_MAJOR_VERSION < 3
-    capture = cvCaptureFromCAM( 0 );
-     if( capture ) {
-      while( true ) {
-        sem_wait(&sem_takeImage);
-	frame = cvQueryFrame( capture );
-  #else*/
      cv::VideoCapture capture(0);
       if(capture.isOpened()) {
        std::cout << "Camera is opened" << std::endl;
        while( true ) {
       sem_wait(&sem_takeImage);
+      clock_gettime(CLOCK_REALTIME, &startTime);
       //std::cout << "Image capture semaphore taken " << std::endl;
       capture.read(frame);
- //#endif
+
       // mirror it
       cv::flip(frame, frame, 1);
       frame.copyTo(debugImage);
@@ -279,7 +270,10 @@ void *captureImage(void *threadp){
       // Apply the classifier to the frame
       if( !frame.empty() ) {
         //detectAndDisplay( frame );
+        clock_gettime(CLOCK_REALTIME, &stopTime);
         sem_post(&sem_detectFace);
+        delta_t(&stopTime,&startTime,&timeDifference);
+        syslog(LOG_INFO,"Image capture execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
         //imwrite("frame.png",frame);
       }
       else {
@@ -301,32 +295,46 @@ void *captureImage(void *threadp){
 
 void *extractFace(void *threadp){
   std::cout << "extract face thread created" <<  std::endl;
+  struct timespec startTime = {0, 0}, stopTime = {0, 0}, timeDifference = {0, 0};
+
   while(true){
     sem_wait(&sem_detectFace);
+    clock_gettime(CLOCK_REALTIME, &startTime);
     //std::cout << "face extraction sem " << std::endl;
     if(detectAndDisplay(frame)==0){
+      clock_gettime(CLOCK_REALTIME, &stopTime);
       sem_post(&sem_detectBlink);
       sem_post(&sem_detectEye);
     }
     else{
+      clock_gettime(CLOCK_REALTIME, &stopTime);
       sem_post(&sem_takeImage);
     }
+    delta_t(&stopTime,&startTime,&timeDifference);
+    syslog(LOG_INFO,"Face extraction execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
     //std::cout << " face extracted " << std::endl;
   }
 }
 
 void *eyeTracking(void *threadp){
   std::cout << "eye tracking thread created" << std::endl;
+  struct timespec startTime = {0, 0}, stopTime = {0, 0}, timeDifference = {0, 0};
+  
   while(true){
-   sem_wait(&sem_detectEye);
-   //std::cout << "eye tracking sem" << std::endl;
-   findEyes(frame_gray, faces[0]);
-   imshow(main_window_name,debugImage);
-   if(checkVal.load(std::memory_order_relaxed) == 1){
-     checkVal.store(0,std::memory_order_relaxed);
-     sem_post(&sem_takeImage);
-   }else
-     checkVal.store(1,std::memory_order_relaxed);
+    sem_wait(&sem_detectEye);
+    clock_gettime(CLOCK_REALTIME, &startTime);
+  //std::cout << "eye tracking sem" << std::endl;
+    findEyes(frame_gray, faces[0]);
+    imshow(main_window_name,debugImage);
+    clock_gettime(CLOCK_REALTIME, &stopTime);
+    if(checkVal.load(std::memory_order_relaxed) == 1){
+      checkVal.store(0,std::memory_order_relaxed);
+      sem_post(&sem_takeImage);
+    }else
+      checkVal.store(1,std::memory_order_relaxed);
+  
+    delta_t(&stopTime,&startTime,&timeDifference);
+    syslog(LOG_INFO,"Eye detection execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
   }
 }
 
@@ -337,8 +345,10 @@ void *mouseControl(void *threadp){
 
 void *eyeBlinking(void *threadp){
   std::cout << "Eye blinking thread created" << std::endl;
+  struct timespec startTime = {0, 0}, stopTime = {0, 0}, timeDifference = {0, 0};
   while(true){
   sem_wait(&sem_detectBlink);
+  clock_gettime(CLOCK_REALTIME, &startTime);
    //std::cout << "Eye blinking check" << std::endl;
    
   cascade = (CvHaarClassifierCascade*)cvLoad( cascade_name[0], 0, 0, 0 );
@@ -363,12 +373,15 @@ void *eyeBlinking(void *threadp){
 
     // Wait for a while before proceeding to the next frame
     //if( cvWaitKey( 1 ) >= 0 )
+        clock_gettime(CLOCK_REALTIME, &stopTime);
         if(checkVal.load(std::memory_order_relaxed) == 1){
           checkVal.store(0,std::memory_order_relaxed);
           sem_post(&sem_takeImage);
         }else{
            checkVal.store(1,std::memory_order_relaxed);
         }
+        delta_t(&stopTime,&startTime,&timeDifference);
+        syslog(LOG_INFO,"Eye Blinking execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
       }
        cvReleaseHaarClassifierCascade(&cascade);
        cvReleaseImage( &copy_frame );
@@ -395,4 +408,40 @@ void print_scheduler(void)
        default:
            printf("Pthread Policy is UNKNOWN\n"); exit(-1);
    }
+}
+
+// Function to calculate difference in time
+int delta_t(struct timespec *stop, struct timespec *start, struct timespec *delta_t)
+{
+  int dt_sec=stop->tv_sec - start->tv_sec;
+  int dt_nsec=stop->tv_nsec - start->tv_nsec;
+
+  if(dt_sec >= 0)
+  {
+    if(dt_nsec >= 0)
+    {
+      delta_t->tv_sec=dt_sec;
+      delta_t->tv_nsec=dt_nsec;
+    }
+    else
+    {
+      delta_t->tv_sec=dt_sec-1;
+      delta_t->tv_nsec=NSEC+dt_nsec;
+    }
+  }
+  else
+  {
+    if(dt_nsec >= 0)
+    {
+      delta_t->tv_sec=dt_sec;
+      delta_t->tv_nsec=dt_nsec;
+    }
+    else
+    {
+      delta_t->tv_sec=dt_sec-1;
+      delta_t->tv_nsec=NSEC+dt_nsec;
+    }
+  }
+
+  return(1);
 }
