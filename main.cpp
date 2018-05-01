@@ -55,6 +55,11 @@ extern CvMemStorage* storage;
 // Create a new Haar classifier
 extern CvHaarClassifierCascade* cascade;
 
+std::string leftEyeCascadeFilename = "haarcascade_lefteye_2splits.xml";
+std::string leftEye_open_CascadeFilename = "haarcascade_eye_tree_eyeglasses.xml";
+extern cv::CascadeClassifier leftEyeDetector;
+extern cv::CascadeClassifier leftEyeDetector_open;
+
 const char *cascade_name[1]={"eyes.xml"};
 
 // Structure for getting video from camera or avi
@@ -383,6 +388,11 @@ void *eyeBlinking(void *threadp){
   int i= 0;
   unsigned int long long sum = 0;
 
+  //Loading the cascades
+  leftEyeDetector.load(leftEyeCascadeFilename);
+  leftEyeDetector_open.load(leftEye_open_CascadeFilename);
+ 
+ 
   while(true){
     sem_wait(&sem_detectBlink);
     clock_gettime(CLOCK_REALTIME, &startTime);

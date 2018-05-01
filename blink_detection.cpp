@@ -2,7 +2,7 @@
 #include "highgui.h"
 #include "blink_detection.h"
 
-
+#include <vector>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,6 +33,11 @@ int max_Trackbar = 5;
 int eye_open=0;
 int eye_close=0;
 
+//std::string leftEyeCascadeFilename = "haarcascade_lefteye_2splits.xml";
+//std::string leftEye_open_CascadeFilename = "haarcascade_eye_tree_eyeglasses.xml";
+cv::CascadeClassifier leftEyeDetector;
+cv::CascadeClassifier leftEyeDetector_open;
+
 cv::Mat roiImg;
 
 CvMemStorage* storage = 0;
@@ -40,6 +45,9 @@ CvMemStorage* storage = 0;
 // Create a new Haar classifier
 CvHaarClassifierCascade* cascade = 0;
 
+int blinkDetectCascade(cv::Mat roi);
+std::vector<cv::Rect> storeLeftEyePos(cv::Mat rightFaceImage);
+std::vector<cv::Rect> storeLeftEyePos(cv::Mat rightFaceImage);
 
 /*******************************************************************
 Function to detect and draw any faces that is present in an image
@@ -108,7 +116,8 @@ bool detect_and_draw( IplImage* img,CvHaarClassifierCascade* cascade )
 	  roiImg = image(rect);
     	  cv::imshow("roi",roiImg);
 	///Send to arduino
-	 detect_blink(roiImg);
+	// detect_blink(roiImg);
+          blinkDetectCascade(roiImg);
         }
     }
     // Show the image in the window named "result"
@@ -199,3 +208,58 @@ void MatchingMethod(cv::Mat templ,int id )
   return;
 }
 
+// Method for detecting open and closed eyes in right half of face
+std::vector<cv::Rect> storeLeftEyePos(cv::Mat rightFaceImage)
+{
+       std::vector<Rect> eyes;
+       leftEyeDetector.detectMultiScale(
+                                        rightFaceImage, 
+                                        eyes,
+                                        1.1,
+                                        2,
+                                        CASCADE_FIND_BIGGEST_OBJECT, 
+                                        Size(0, 0)
+                                        );
+
+       return eyes;
+}
+
+// Method for detecting open eyes in right half of face
+std::vector<cv::Rect> storeLeftEyePos_open(cv::Mat rightFaceImage)
+{
+       std::vector<Rect> eyes;
+       leftEyeDetector_open.detectMultiScale(
+                                             rightFaceImage, 
+                                             eyes,
+                                             1.1,
+                                             2,
+                                             CASCADE_FIND_BIGGEST_OBJECT, 
+                                             Size(0, 0)
+                                             );
+      
+       return eyes;
+}
+
+int blinkDetectCascade(cv::Mat roi){
+  //Loading the cascades
+  //leftEyeDetector.load(leftEyeCascadeFilename);
+  //leftEyeDetector_open.load(leftEye_open_CascadeFilename);
+  
+  std::vector<cv::Rect> eyesRight = storeLeftEyePos(roi); //Detect Open or Closed eyes
+
+  if (eyesRight.size() > 0)
+  {            
+       // Now look for open eyes only
+       std::vector<cv::Rect> eyesRightNew = storeLeftEyePos_open(roi);
+
+       if (eyesRightNew.size() > 0) //Eye is open
+       {              
+         std::cout << "Eyes open" << std::endl;
+       }
+       else //Eye is closed
+       {              
+         std::cout << "Eyes close" << std::endl;
+       }
+  }
+  return 0;
+}
