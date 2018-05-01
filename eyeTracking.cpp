@@ -40,6 +40,8 @@ cv::Point findEyes(cv::Mat frame_gray, cv::Rect face) {
   cv::Point leftPupil = findEyeCenter(faceROI,leftEyeRegion,"Left Eye");
   cv::Point rightPupil = findEyeCenter(faceROI,rightEyeRegion,"Right Eye");
 
+  cv::Point mouseControl = rightPupil;
+
   std::cout << "Right eye x: "<< rightPupil.x <<" y: "<<rightPupil.y << std::endl;
   // get corner regions
   cv::Rect leftRightCornerRegion(leftEyeRegion);
@@ -97,7 +99,7 @@ cv::Point findEyes(cv::Mat frame_gray, cv::Rect face) {
 //  cv::Rect roi( cv::Point( 0, 0 ), faceROI.size());
 //  cv::Mat destinationROI = debugImage( roi );
 //  faceROI.copyTo( destinationROI );
-  return rightPupil;
+  return mouseControl;
 }
 
 /*

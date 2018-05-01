@@ -1,3 +1,11 @@
+/***************************************************************************************************************************
+* Authors: Virag Gada and Shreyas Vasanhkumar
+* Title: Real-time eye tracking for disability assisatance
+* File Name: blink_detection.cpp
+* Reference: Codes for this file taking from http://www.technolabsz.com/2013/05/eye-blink-detection-using-opencv-in.html and
+*                                            http://sanyamgarg.blogspot.com/2016/03/a-blink-detection-technique-using.html
+***************************************************************************************************************************/
+
 #include "cv.h"
 #include "highgui.h"
 #include "blink_detection.h"
@@ -68,10 +76,11 @@ int optlen = strlen("--cascade=");
 const char* input_name;
 
 /* Detect the eye region and draw the region of interest */
-bool detect_and_draw( IplImage* img,CvHaarClassifierCascade* cascade )
+eyeState_t detect_and_draw( IplImage* img,CvHaarClassifierCascade* cascade )
 {
     int scale = 1;
     Mat image;
+    eyeState_t state;  
 
     // Create a new image based on the input image
     IplImage* temp = cvCreateImage( cvSize(img->width/scale,img->height/scale), 8, 3 );
@@ -87,49 +96,51 @@ bool detect_and_draw( IplImage* img,CvHaarClassifierCascade* cascade )
     if( cascade )
     {
 
-        // There can be more than one face in an image. So create a growable sequence of faces.
-        // Detect the objects and store them in the sequence
-        CvSeq* faces = cvHaarDetectObjects( img, cascade, storage,
+      // There can be more than one face in an image. So create a growable sequence of faces.
+      // Detect the objects and store them in the sequence
+      CvSeq* faces = cvHaarDetectObjects( img, cascade, storage,
                                             1.1, 8, CV_HAAR_DO_CANNY_PRUNING,
                                             cvSize(40, 40) );
 
-        // Loop the number of faces found.
-        for( i = 0; i < (faces ? faces->total : 0); i++ )
-        {
-           // Create a new rectangle for drawing the face
-            CvRect* r = (CvRect*)cvGetSeqElem( faces, i );
+      // Loop the number of faces found.
+      for( i = 0; i < (faces ? faces->total : 0); i++ )
+      {
+        // Create a new rectangle for drawing the face
+        CvRect* r = (CvRect*)cvGetSeqElem( faces, i );
 
-            // Find the dimensions of the face,and scale it if necessary
-            pt1.x = r->x*scale;
-            pt2.x = (r->x+r->width)*scale;
-            pt1.y = r->y*scale;
-            pt2.y = (r->y+r->height)*scale;
+        // Find the dimensions of the face,and scale it if necessary
+        pt1.x = r->x*scale;
+        pt2.x = (r->x+r->width)*scale;
+        pt1.y = r->y*scale;
+        pt2.y = (r->y+r->height)*scale;
 
-            // Draw the rectangle in the input image
-            cvRectangle( img, pt1, pt2, CV_RGB(255,0,0), 3, 8, 0 );
+        // Draw the rectangle in the input image
+        cvRectangle( img, pt1, pt2, CV_RGB(255,0,0), 3, 8, 0 );
 
-	  cv::Mat image = cv::cvarrToMat(img);
-	  cv::Rect rect;
+        cv::Mat image = cv::cvarrToMat(img);
+	    cv::Rect rect;
 
-	  rect = cv::Rect(pt1.x,pt1.y,(pt2.x-pt1.x),(pt2.y-pt1.y));
+	    rect = cv::Rect(pt1.x,pt1.y,(pt2.x-pt1.x),(pt2.y-pt1.y));
 
-	  roiImg = image(rect);
-    	  cv::imshow("roi",roiImg);
-	///Send to arduino
-	// detect_blink(roiImg);
-          blinkDetectCascade(roiImg);
-        }
+	    roiImg = image(rect);
+        cv::imshow("roi",roiImg);
+		
+        // detect_blink(roiImg);
+        state = blinkDetectCascade(roiImg);
+      }
     }
+
     // Show the image in the window named "result"
     //scvShowImage( "original_frame", img );
 
-   if(i  > 0)
+   /*if(i  > 0)
      return 1;
    else
-     return 0;
+     return 0;*/
+   
    // Release the temp image created.
    cvReleaseImage( &temp );
-
+   return state;
 }
 
 void detect_blink(cv::Mat roi)
@@ -240,11 +251,11 @@ std::vector<cv::Rect> storeLeftEyePos_open(cv::Mat rightFaceImage)
        return eyes;
 }
 
-int blinkDetectCascade(cv::Mat roi){
+eyeState_t blinkDetectCascade(cv::Mat roi){
   //Loading the cascades
   //leftEyeDetector.load(leftEyeCascadeFilename);
   //leftEyeDetector_open.load(leftEye_open_CascadeFilename);
-  
+  eyeState_t state = -1;
   std::vector<cv::Rect> eyesRight = storeLeftEyePos(roi); //Detect Open or Closed eyes
 
   if (eyesRight.size() > 0)
@@ -255,11 +266,13 @@ int blinkDetectCascade(cv::Mat roi){
        if (eyesRightNew.size() > 0) //Eye is open
        {              
          std::cout << "Eyes open" << std::endl;
+         state = EYES_OPEN;
        }
        else //Eye is closed
        {              
          std::cout << "Eyes close" << std::endl;
+         state = EYES_CLOSE;
        }
   }
-  return 0;
+  return state;
 }
