@@ -22,6 +22,10 @@
 std::atomic<int> checkVal(0);
 //checkVal.store(1,std::memory_order_relaxed);
 
+mouseActions_t moveMouse, clickMouse;
+cv:: Point mouseCoordinates;
+extern cv::Mat debugFace;
+
 int abortTest=FALSE;
 int abortS1=FALSE, abortS2=FALSE, abortS3=FALSE, abortS4=FALSE, abortS5=FALSE;
 sem_t sem_takeImage, sem_detectFace, sem_detectEye, sem_detectBlink, sem_controlMouse;
@@ -68,8 +72,16 @@ extern const char* input_name;
 
 using namespace cv; 
 
-Mat img1 = imread( "open.jpg", 1 );
+Mat img1 = imread( "opennew.jpg", 1 );
 Mat img2 = imread( "close.jpg", 1 );
+
+template <typename T>
+std::string ToString(T val)
+{
+  std::stringstream stream;
+  stream << val;
+  return stream.str();
+}
 
 int main(int argc, const char** argv)
 {
@@ -201,15 +213,14 @@ int main(int argc, const char** argv)
      //perror("Eye Blinking");
     }
   //Mouse control thread
-  /*rt_param[3].sched_priority=rt_max_prio-2;
-  pthread_attr_setschedparam(&rt_sched_attr[3], &rt_param[3]);
-  rc=pthread_create(&threads[4], &rt_sched_attr[3], mouseControl, (void *)&(threadParams[3]));
+  rt_param[4].sched_priority=rt_max_prio-5;
+  pthread_attr_setschedparam(&rt_sched_attr[4], &rt_param[4]);
+  rc=pthread_create(&threads[4], &rt_sched_attr[4], mouseControl, (void *)&(threadParams[4]));
   if(rc < 0)
     perror("pthread_create for service 4");
   else
-    printf("pthread_create successful for mouse control\n");*/
+    printf("pthread_create successful for mouse control\n");
 
- // while(1);
 
   for(i=0;i<NUM_THREADS;i++)
   {
@@ -226,81 +237,90 @@ void *captureImage(void *threadp){
   
   std::cout << "capture image thread created" << std::endl;
   struct timespec startTime = {0, 0}, stopTime = {0, 0}, timeDifference = {0, 0};
+  int i= 0;
+  unsigned int long long sum = 0;
   // Load the cascades
-  if( !face_cascade.load( face_cascade_name ) ){ printf("--(!)Error loading face cascade, please change face_cascade_name in source code.\n");
-
-   }
+  if( !face_cascade.load( face_cascade_name ) ){ 
+     printf("--(!)Error loading face cascade, please change face_cascade_name in source code.\n");
+  }
   else{
 
-  cv::namedWindow(main_window_name,CV_WINDOW_NORMAL);
-  cv::moveWindow(main_window_name, 400, 100);
-  cv::namedWindow(face_window_name,CV_WINDOW_NORMAL);
-  cv::moveWindow(face_window_name, 10, 100);
-  //cv::namedWindow("Right Eye",CV_WINDOW_NORMAL);
-  //cv::moveWindow("Right Eye", 10, 600);
-  //cv::namedWindow("Left Eye",CV_WINDOW_NORMAL);
-  //cv::moveWindow("Left Eye", 10, 800);
-  //cv::namedWindow("aa",CV_WINDOW_NORMAL);
-  //cv::moveWindow("aa", 10, 800);
-  //cv::namedWindow("aaa",CV_WINDOW_NORMAL);
-  //cv::moveWindow("aaa", 10, 800);
-  //cv::namedWindow( result_window, CV_WINDOW_AUTOSIZE );
+    cv::namedWindow(main_window_name,CV_WINDOW_NORMAL);
+    cv::moveWindow(main_window_name, 400, 100);
+    cv::namedWindow(face_window_name,CV_WINDOW_NORMAL);
+    cv::moveWindow(face_window_name, 10, 100);
+    //cv::namedWindow("Right Eye",CV_WINDOW_NORMAL);
+    //cv::moveWindow("Right Eye", 10, 600);
+    //cv::namedWindow("Left Eye",CV_WINDOW_NORMAL);
+    //cv::moveWindow("Left Eye", 10, 800);
+    //cv::namedWindow( result_window, CV_WINDOW_AUTOSIZE );
 
-  storage = cvCreateMemStorage(0);
+    storage = cvCreateMemStorage(0);
 
-  createCornerKernels();
-  ellipse(skinCrCbHist, cv::Point(113, 155.6), cv::Size(23.4, 15.2),
+    createCornerKernels();
+    ellipse(skinCrCbHist, cv::Point(113, 155.6), cv::Size(23.4, 15.2),
         43.0, 0.0, 360.0, cv::Scalar(255, 255, 255), -1);
 
-  std::cout << "Accessing Camera..." << std::endl;
+    std::cout << "Accessing Camera..." << std::endl;
 
-     cv::VideoCapture capture(0);
-      if(capture.isOpened()) {
-       std::cout << "Camera is opened" << std::endl;
-       while( true ) {
-      sem_wait(&sem_takeImage);
-      clock_gettime(CLOCK_REALTIME, &startTime);
-      //std::cout << "Image capture semaphore taken " << std::endl;
-      capture.read(frame);
+    cv::VideoCapture capture(0);
+    if(capture.isOpened()) {
+      std::cout << "Camera is opened" << std::endl;
+      while( true ) {
+        sem_wait(&sem_takeImage);
+        clock_gettime(CLOCK_REALTIME, &startTime);
+        syslog(LOG_INFO,"captureImage thread executed at %ld sec %ld nsec\n",startTime.tv_sec,startTime.tv_nsec);
+        capture.read(frame);
 
-      // mirror it
-      cv::flip(frame, frame, 1);
-      frame.copyTo(debugImage);
+        // mirror it
+        cv::flip(frame, frame, 1);
+        frame.copyTo(debugImage);
 
-      // Apply the classifier to the frame
-      if( !frame.empty() ) {
-        //detectAndDisplay( frame );
-        clock_gettime(CLOCK_REALTIME, &stopTime);
-        sem_post(&sem_detectFace);
-        delta_t(&stopTime,&startTime,&timeDifference);
-        syslog(LOG_INFO,"Image capture execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
-        //imwrite("frame.png",frame);
-      }
-      else {
-        printf(" --(!) No captured frame -- Break!");
-        break;
-      }
-      imshow(main_window_name,frame);
-      int c = cv::waitKey(10);
-      if( (char)c == 'c' ) { break; }
-      if( (char)c == 'f' ) {
-        imwrite("frame.png",frame);
+        // Apply the classifier to the frame
+        if( !frame.empty() ) {
+          //detectAndDisplay( frame );
+          clock_gettime(CLOCK_REALTIME, &stopTime);
+          sem_post(&sem_detectFace);
+          delta_t(&stopTime,&startTime,&timeDifference);
+          i++;
+          sum += timeDifference.tv_nsec;
+          if(i==100){
+            i=0;
+           // syslog(LOG_NOTICE,"Mouse Control thread average after 100 executions: %lld nsec",(sum/100));
+            sum=0;
+	    }	
+            //syslog(LOG_INFO,"Mouse Control execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
+         // }
+          //imwrite("frame.png",frame);
+        }
+        else {
+          printf(" --(!) No captured frame -- Break!");
+          break;
+        }
+        imshow(main_window_name,frame);
+        int c = cv::waitKey(10);
+        if( (char)c == 'c' ) { break; }
+        if( (char)c == 'f' ) {
+          imwrite("frame.png",frame);
+        }
       }
     }
-  }
 
-  releaseCornerKernels();
+    releaseCornerKernels();
   }
 }
 
 void *extractFace(void *threadp){
   std::cout << "extract face thread created" <<  std::endl;
   struct timespec startTime = {0, 0}, stopTime = {0, 0}, timeDifference = {0, 0};
+  int i= 0;
+  unsigned int long long sum = 0;
 
   while(true){
     sem_wait(&sem_detectFace);
     clock_gettime(CLOCK_REALTIME, &startTime);
-    //std::cout << "face extraction sem " << std::endl;
+    syslog(LOG_INFO,"extractFace thread executed at %ld sec %ld nsec\n",startTime.tv_sec,startTime.tv_nsec);
+
     if(detectAndDisplay(frame)==0){
       clock_gettime(CLOCK_REALTIME, &stopTime);
       sem_post(&sem_detectBlink);
@@ -311,7 +331,15 @@ void *extractFace(void *threadp){
       sem_post(&sem_takeImage);
     }
     delta_t(&stopTime,&startTime,&timeDifference);
-    syslog(LOG_INFO,"Face extraction execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
+    i++;
+    sum += timeDifference.tv_nsec;
+    if(i==100){
+       i=0;
+       //syslog(LOG_NOTICE,"Face extraction thread average after 100 executions: %lld nsec",(sum/100));
+       sum=0;
+       syslog(LOG_INFO,"Face extraction execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
+     }
+    //syslog(LOG_INFO,"Face extraction execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
     //std::cout << " face extracted " << std::endl;
   }
 }
@@ -319,39 +347,48 @@ void *extractFace(void *threadp){
 void *eyeTracking(void *threadp){
   std::cout << "eye tracking thread created" << std::endl;
   struct timespec startTime = {0, 0}, stopTime = {0, 0}, timeDifference = {0, 0};
-  
+  int i= 0;
+  unsigned int long long sum = 0;
+
   while(true){
     sem_wait(&sem_detectEye);
     clock_gettime(CLOCK_REALTIME, &startTime);
-  //std::cout << "eye tracking sem" << std::endl;
-    findEyes(frame_gray, faces[0]);
+    syslog(LOG_INFO,"eyeTracking thread executed at %ld sec %ld nsec\n",startTime.tv_sec,startTime.tv_nsec);
+
+    mouseCoordinates = findEyes(frame_gray, faces[0]);
+    moveMouse = MOUSE_MOVE;
     imshow(main_window_name,debugImage);
     clock_gettime(CLOCK_REALTIME, &stopTime);
     if(checkVal.load(std::memory_order_relaxed) == 1){
       checkVal.store(0,std::memory_order_relaxed);
-      sem_post(&sem_takeImage);
+      sem_post(&sem_controlMouse);
     }else
       checkVal.store(1,std::memory_order_relaxed);
   
     delta_t(&stopTime,&startTime,&timeDifference);
-    syslog(LOG_INFO,"Eye detection execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
+    i++;
+    sum += timeDifference.tv_nsec;
+    if(i==100){
+       i=0;
+       //syslog(LOG_NOTICE,"Eye Detection thread average after 100 executions: %lld nsec",(sum/100));
+       sum = 0;
+       //syslog(LOG_INFO,"Eye detection execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
+     }
   }
-}
-
-void *mouseControl(void *threadp){
-
-
 }
 
 void *eyeBlinking(void *threadp){
   std::cout << "Eye blinking thread created" << std::endl;
   struct timespec startTime = {0, 0}, stopTime = {0, 0}, timeDifference = {0, 0};
+  int i= 0;
+  unsigned int long long sum = 0;
+
   while(true){
-  sem_wait(&sem_detectBlink);
-  clock_gettime(CLOCK_REALTIME, &startTime);
-   //std::cout << "Eye blinking check" << std::endl;
-   
-  cascade = (CvHaarClassifierCascade*)cvLoad( cascade_name[0], 0, 0, 0 );
+    sem_wait(&sem_detectBlink);
+    clock_gettime(CLOCK_REALTIME, &startTime);
+
+    syslog(LOG_INFO,"eyeBlinking thread executed at %ld sec %ld nsec\n",startTime.tv_sec,startTime.tv_nsec);
+    cascade = (CvHaarClassifierCascade*)cvLoad( cascade_name[0], 0, 0, 0 );
 
     // Check whether the cascade has loaded successfully. Else report and error and quit
     if( !cascade )
@@ -376,18 +413,65 @@ void *eyeBlinking(void *threadp){
         clock_gettime(CLOCK_REALTIME, &stopTime);
         if(checkVal.load(std::memory_order_relaxed) == 1){
           checkVal.store(0,std::memory_order_relaxed);
-          sem_post(&sem_takeImage);
+          sem_post(&sem_controlMouse);
         }else{
            checkVal.store(1,std::memory_order_relaxed);
         }
         delta_t(&stopTime,&startTime,&timeDifference);
-        syslog(LOG_INFO,"Eye Blinking execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
+        i++;
+        sum += timeDifference.tv_nsec;
+        if(i==100){
+          i=0;
+          //syslog(LOG_NOTICE,"Eye Blinking thread average after 100 executions: %lld nsec",(sum/100));
+          sum=0;
+          //syslog(LOG_INFO,"Eye Blinking execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
+        }
       }
        cvReleaseHaarClassifierCascade(&cascade);
        cvReleaseImage( &copy_frame );
        //cvReleaseCapture( &capture );
        cvReleaseMemStorage(&storage);
 }
+
+void *mouseControl(void *threadp){
+  std::cout << "mouse control thread created" << std::endl;
+  struct timespec startTime = {0, 0}, stopTime = {0, 0}, timeDifference = {0, 0};
+  int i = 0;
+  unsigned int long long sum = 0;
+
+  while(true){
+    sem_wait(&sem_controlMouse);
+    clock_gettime(CLOCK_REALTIME, &startTime);
+    syslog(LOG_INFO,"mouseControl thread executed at %ld sec %ld nsec\n",startTime.tv_sec,startTime.tv_nsec);
+    if(moveMouse == MOUSE_MOVE){
+      moveMouse = MOUSE_CLEAR;
+      changeMouse(debugFace,mouseCoordinates);
+    }    
+    clock_gettime(CLOCK_REALTIME, &stopTime);
+    sem_post(&sem_takeImage);
+    delta_t(&stopTime,&startTime,&timeDifference);
+    i++;
+    sum += timeDifference.tv_nsec;
+    if(i==100){
+      i=0;
+      //sum=0;
+      //syslog(LOG_NOTICE,"Image Capture thread average after 100 executions: %lld nsec",(sum/100));
+      sum=0;
+    }
+    //syslog(LOG_INFO,"Image Capture execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
+  }
+}
+
+void changeMouse(cv::Mat &frame, cv::Point &location)
+{
+  if (location.x > frame.cols) location.x = frame.cols;
+  if (location.x < 0) location.x = 0;
+  if (location.y > frame.rows) location.y = frame.rows;
+  if (location.y < 0) location.y = 0;
+  system(("xdotool mousemove " + ToString(location.x*location.x/80) + " " + ToString(location.y*location.y/40)).c_str());
+  //std::cout << ("xdotool mousemove " + ToString(location.x*location.x/20) + " " + ToString(location.y*location.y/10)).c_str() << std::endl;
+}
+
 void print_scheduler(void)
 {
    int schedType;

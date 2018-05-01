@@ -17,12 +17,11 @@ cv::Mat skinCrCbHist = cv::Mat::zeros(cv::Size(256, 256), CV_8UC1);
 
 std::vector<cv::Rect> faces; // vector to hold face
 cv::Mat frame_gray; // store red channel
+cv::Mat debugFace;
 
-
-
-void findEyes(cv::Mat frame_gray, cv::Rect face) {
+cv::Point findEyes(cv::Mat frame_gray, cv::Rect face) {
   cv::Mat faceROI = frame_gray(face);
-  cv::Mat debugFace = faceROI;
+  debugFace = faceROI;
 
   if (kSmoothFaceImage) {
     double sigma = kSmoothFaceFactor * face.width;
@@ -96,6 +95,7 @@ void findEyes(cv::Mat frame_gray, cv::Rect face) {
 //  cv::Rect roi( cv::Point( 0, 0 ), faceROI.size());
 //  cv::Mat destinationROI = debugImage( roi );
 //  faceROI.copyTo( destinationROI );
+  return rightPupil;
 }
 
 /*

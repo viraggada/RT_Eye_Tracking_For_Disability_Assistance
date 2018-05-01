@@ -51,15 +51,15 @@ extern Mat img2;
 Mat templ; Mat result;
 
 // Structure for getting video from camera or avi
-     CvCapture* capture = 0;
+CvCapture* capture = 0;
 
-       // Used for calculations
-    int optlen = strlen("--cascade=");
+// Used for calculations
+int optlen = strlen("--cascade=");
 
-    // Input file name for avi or image file.
-    const char* input_name;
+// Input file name for avi or image file.
+const char* input_name;
 
-
+/* Detect the eye region and draw the region of interest */
 bool detect_and_draw( IplImage* img,CvHaarClassifierCascade* cascade )
 {
     int scale = 1;
@@ -115,30 +115,25 @@ bool detect_and_draw( IplImage* img,CvHaarClassifierCascade* cascade )
     //scvShowImage( "original_frame", img );
 
    if(i  > 0)
-		return 1;
-	else
-		return 0;
-    // Release the temp image created.
-    cvReleaseImage( &temp );
+     return 1;
+   else
+     return 0;
+   // Release the temp image created.
+   cvReleaseImage( &temp );
 
 }
 
 void detect_blink(cv::Mat roi)
 {
-
-
-	try
-	{
-	MatchingMethod(img1,0);
- 	MatchingMethod(img2,1);
-
-	}
-
-	catch( cv::Exception& e )
-
-	{
-		std::cout<<"An exception occued"<<std::endl;
-	}
+  try
+  { 
+    MatchingMethod(img1,0);
+    MatchingMethod(img2,1);
+  }
+  catch( cv::Exception& e )
+  {
+    std::cout<<"An exception occured"<<std::endl;
+  }
 }
 
 //Matching with 2 images ,eye closed or open
@@ -164,33 +159,32 @@ void MatchingMethod(cv::Mat templ,int id )
 
   cv::minMaxLoc( result, &minVal, &maxVal, &minLoc, &maxLoc, Mat() );
 
-
-
-  ///Justing checkin the match template value reaching the threashold
+  ///Justing checkin the match template value reaching the threshold
   if(id == 0 && (minVal < 0))
-	{
-	eye_open=eye_open+1;
-	if(eye_open == 5)
-		{
-		std::cout<<"Eye Open"<<std::endl;
-		eye_open=0;
-		eye_close=0;
-		}
-	}
-   else if(id == 1 && (minVal < 0))
-	eye_close=eye_close+1;
-	if(eye_close == 5)
-		{
-		std::cout<<"\t\t\t\t\tEye Closed"<<std::endl;
-		eye_close=0;
-		eye_open=0;
-		//system("python send_arduino.py");
-		}
-	std:: cout<<"Open Val:"<<eye_open<<"  Close Val:"<<eye_close<<std::endl;
+  {
+    eye_open=eye_open+1;
+    if(eye_open == 10)
+    {
+      std::cout<<"Eye Open"<<std::endl;
+      eye_open=0;
+      eye_close=0;
+    }
+  }
+  else if(id == 1 && (minVal < 0)){
+    eye_close=eye_close+1;
+    if(eye_close == 10)
+      {
+        std::cout<<"\t\t\t\t\tEye Closed"<<std::endl;
+        eye_close=0;
+        eye_open=0;
+        //system("python send_arduino.py");
+      }
+  }
+  std:: cout<<"Open Val:"<<eye_open<<"  Close Val:"<<eye_close<<std::endl;
 
 
   /// For SQDIFF and SQDIFF_NORMED, the best matches are lower values. For all the other methods, the higher the better
-  if( match_method  == CV_TM_SQDIFF || match_method == CV_TM_SQDIFF_NORMED )
+  if( match_method  == CV_TM_SQDIFF || match_method == CV_TM_CCORR_NORMED )
     { matchLoc = minLoc; }
   else
     { matchLoc = maxLoc; }
@@ -199,7 +193,7 @@ void MatchingMethod(cv::Mat templ,int id )
   cv::rectangle( img_display, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
   cv::rectangle( result, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
 
- // cv::imshow( image_window, img_display );
+  //cv::imshow( image_window, img_display );
   //cv::imshow( result_window, result );
 
   return;

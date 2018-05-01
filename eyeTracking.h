@@ -15,7 +15,7 @@
 
 /** Function Headers */
 int detectAndDisplay( cv::Mat frame);
-void findEyes(cv::Mat frame_gray, cv::Rect face);
+cv::Point findEyes(cv::Mat frame_gray, cv::Rect face);
 
 /* Global Variable */
 /*cv::String face_cascade_name = "haarcascade_frontalface_alt.xml";

@@ -33,7 +33,14 @@ typedef struct
     unsigned long long sequencePeriods;
 } threadParams_t;
 
+typedef enum{
+  MOUSE_CLEAR,
+  MOUSE_MOVE,
+  MOUSE_CLICK
+} mouseActions_t;
+
 void print_scheduler(void);
 int delta_t(struct timespec *stop, struct timespec *start, struct timespec *delta_t);
+void changeMouse(cv::Mat &frame, cv::Point &location);
 
 #endif
