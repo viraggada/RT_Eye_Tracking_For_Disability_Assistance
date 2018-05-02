@@ -23,8 +23,9 @@ std::atomic<int> checkVal(0);
 //checkVal.store(1,std::memory_order_relaxed);
 
 mouseActions_t moveMouse, clickMouse;
-cv:: Point mouseCoordinates, mouseLocation = cv::Point(800,800);
-extern cv::Mat debugFace;
+cv:: Point eyeSize;
+cv:: Point mouseCoordinates, mouseLocation = cv::Point(640,384);
+//extern cv::Mat debugFace;
 
 int abortTest=FALSE;
 int abortS1=FALSE, abortS2=FALSE, abortS3=FALSE, abortS4=FALSE, abortS5=FALSE;
@@ -80,6 +81,7 @@ using namespace cv;
 Mat img1 = imread( "opennew.jpg", 1 );
 Mat img2 = imread( "close.jpg", 1 );
 
+/* Template to implemt ToString functionality */
 template <typename T>
 std::string ToString(T val)
 {
@@ -358,10 +360,16 @@ void *eyeTracking(void *threadp){
   while(true){
     sem_wait(&sem_detectEye);
     clock_gettime(CLOCK_REALTIME, &startTime);
-    syslog(LOG_INFO,"eyeTracking thread executed at %ld sec %ld nsec\n",startTime.tv_sec,startTime.tv_nsec);
+   // syslog(LOG_INFO,"eyeTracking thread executed at %ld sec %ld nsec\n",startTime.tv_sec,startTime.tv_nsec);
 
     mouseCoordinates = findEyes(frame_gray, faces[0]);
     moveMouse = MOUSE_MOVE;
+    
+    if(i == 0){
+      eyeSize.x = mouseCoordinates.x;
+      eyeSize.y = mouseCoordinates.y;
+      i++;
+    }
 
     imshow(main_window_name,debugImage);
     clock_gettime(CLOCK_REALTIME, &stopTime);
@@ -376,8 +384,8 @@ void *eyeTracking(void *threadp){
     i++;
     sum += timeDifference.tv_nsec;
 
-    if(i==100){
-       i=0;
+    if(i==101){
+       i=1;
        //syslog(LOG_NOTICE,"Eye Detection thread average after 100 executions: %lld nsec",(sum/100));
        sum = 0;
        //syslog(LOG_INFO,"Eye detection execution time - %ld sec, %ld nsec\n",timeDifference.tv_sec,timeDifference.tv_nsec);
@@ -400,7 +408,7 @@ void *eyeBlinking(void *threadp){
     sem_wait(&sem_detectBlink);
     clock_gettime(CLOCK_REALTIME, &startTime);
 
-    syslog(LOG_INFO,"eyeBlinking thread executed at %ld sec %ld nsec\n",startTime.tv_sec,startTime.tv_nsec);
+    //syslog(LOG_INFO,"eyeBlinking thread executed at %ld sec %ld nsec\n",startTime.tv_sec,startTime.tv_nsec);
     cascade = (CvHaarClassifierCascade*)cvLoad( cascade_name[0], 0, 0, 0 );
 
     // Check whether the cascade has loaded successfully. Else report and error and quit
@@ -451,14 +459,19 @@ void *mouseControl(void *threadp){
   struct timespec startTime = {0, 0}, stopTime = {0, 0}, timeDifference = {0, 0};
   int i = 0;
   unsigned int long long sum = 0;
+  system(("xdotool mousemove " + ToString(mouseLocation.x) + " " + ToString(mouseLocation.y)).c_str());
 
   while(true){
     sem_wait(&sem_controlMouse);
     clock_gettime(CLOCK_REALTIME, &startTime);
-    syslog(LOG_INFO,"mouseControl thread executed at %ld sec %ld nsec\n",startTime.tv_sec,startTime.tv_nsec);
+    //syslog(LOG_INFO,"mouseControl thread executed at %ld sec %ld nsec\n",startTime.tv_sec,startTime.tv_nsec);
     if(moveMouse == MOUSE_MOVE){
       moveMouse = MOUSE_CLEAR;
-      changeMouse(debugFace,mouseCoordinates);
+      changeMouse(mouseCoordinates);
+    }
+    if(clickMouse == MOUSE_CLICK){
+      clickMouse = MOUSE_CLEAR;
+      system("xdotool click 1");
     }    
     clock_gettime(CLOCK_REALTIME, &stopTime);
     sem_post(&sem_takeImage);
@@ -475,33 +488,38 @@ void *mouseControl(void *threadp){
   }
 }
 
-void changeMouse(cv::Mat &frame, cv::Point &location)
+void changeMouse(cv::Point &location)
 { 
-  const int relativeMotion = 10;
-  if ((location.x < 55) && (location.x >45) && (location.y < 55) && (location.y > 45)){
+  const int relativeMotion = 40;
+  const int shift = 4;
+  if ((location.x < (eyeSize.x + shift)) && (location.x > (eyeSize.x - shift)) && (location.y < (eyeSize.y + shift)) && (location.y > (eyeSize.y - shift))){
     // do nothing
   }
   else{ // if value for 1 axis deviates more then threshold then change mouse pointer
-    if((location.x < 55) && (location.x >45)){
-      if(location.y < 43){ // up
+    if((location.x < (eyeSize.x + shift)) && (location.x > (eyeSize.x - shift))){
+      if(location.y < (eyeSize.y - shift)){ // up
         mouseLocation.y -= relativeMotion;
+        //std::cout << "Up: "<<mouseLocation.x<< "x" <<mouseLocation.y <<std::endl;
       }
-      else if(location.y > 55){ // down
+      else if(location.y > (eyeSize.y + shift)){ // down
         mouseLocation.y += relativeMotion;
+        //std::cout << "Down: "<<mouseLocation.x<< "x" <<mouseLocation.y << std::endl;
       }
     }
-    else if((location.y < 55) && (location.y >45)){ 
-      if(location.x < 43){ //left
+    else if((location.y < (eyeSize.y + shift)) && (location.y > (eyeSize.y - shift))){ 
+      if(location.x < (eyeSize.x - shift)){ //left
         mouseLocation.x -= relativeMotion;
+        //std::cout << "Left: "<<mouseLocation.x<< "x" <<mouseLocation.y << std::endl;
       }
-      else if(location.x > 55){ //right
+      else if(location.x > (eyeSize.x + shift)){ //right
         mouseLocation.x += relativeMotion;
+        //std::cout << "Right: "<<mouseLocation.x<< "x" <<mouseLocation.y << std::endl;
       }
     }
     // check that it does not go out of bounds
-    if (mouseLocation.x > frame.cols) mouseLocation.x = frame.cols;
+    if (mouseLocation.x > 1280) mouseLocation.x = 1280;
     if (mouseLocation.x < 0) mouseLocation.x = 0;
-    if (mouseLocation.y > frame.rows) mouseLocation.y = frame.rows;
+    if (mouseLocation.y > 768) mouseLocation.y = 768;
     if (mouseLocation.y < 0) mouseLocation.y = 0;
     system(("xdotool mousemove " + ToString(mouseLocation.x) + " " + ToString(mouseLocation.y)).c_str());
   //std::cout << ("xdotool mousemove " + ToString(location.x*location.x/20) + " " + ToString(location.y*location.y/10)).c_str() << std::endl;

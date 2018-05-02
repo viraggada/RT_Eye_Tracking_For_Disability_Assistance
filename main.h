@@ -41,6 +41,6 @@ typedef enum{
 
 void print_scheduler(void);
 int delta_t(struct timespec *stop, struct timespec *start, struct timespec *delta_t);
-void changeMouse(cv::Mat &frame, cv::Point &location);
+void changeMouse(cv::Point &location);
 
 #endif

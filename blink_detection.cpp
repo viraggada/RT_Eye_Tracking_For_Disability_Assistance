@@ -53,7 +53,7 @@ CvMemStorage* storage = 0;
 // Create a new Haar classifier
 CvHaarClassifierCascade* cascade = 0;
 
-int blinkDetectCascade(cv::Mat roi);
+eyeState_t blinkDetectCascade(cv::Mat roi);
 std::vector<cv::Rect> storeLeftEyePos(cv::Mat rightFaceImage);
 std::vector<cv::Rect> storeLeftEyePos(cv::Mat rightFaceImage);
 
@@ -255,7 +255,7 @@ eyeState_t blinkDetectCascade(cv::Mat roi){
   //Loading the cascades
   //leftEyeDetector.load(leftEyeCascadeFilename);
   //leftEyeDetector_open.load(leftEye_open_CascadeFilename);
-  eyeState_t state = -1;
+  eyeState_t state = CLEAR;
   std::vector<cv::Rect> eyesRight = storeLeftEyePos(roi); //Detect Open or Closed eyes
 
   if (eyesRight.size() > 0)

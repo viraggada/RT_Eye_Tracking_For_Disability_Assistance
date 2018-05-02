@@ -31,6 +31,12 @@
 #include "opencv2/imgproc/imgproc.hpp"
 
 
+typedef enum{
+  CLEAR,
+  EYES_OPEN,
+  EYES_CLOSE
+}eyeState_t;
+
 /**********************************************
 function defintions
 **********************************************/
@@ -38,10 +44,5 @@ function defintions
 eyeState_t detect_and_draw( IplImage* image ,CvHaarClassifierCascade* cascade);
 void MatchingMethod(cv::Mat templ,int id );
 void detect_blink(cv::Mat roi);
-
-typedef enum{
-  EYES_OPEN,
-  EYES_CLOSE
-}eyeState_t;
 
 #endif
